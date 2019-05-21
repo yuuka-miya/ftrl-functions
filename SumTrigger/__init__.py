@@ -64,39 +64,15 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     
     df = df[df['TOTAL_TRIPS'] !=0]
     
-    if to_sum is 'true':
-      
-      logging.info(to_sum)
-      if direction is "1":
-        logging.info(df[df["ORIGIN_PT_CODE"].str.contains(code)]["TOTAL_TRIPS"].sum())
-        return func.HttpResponse(df[df["ORIGIN_PT_CODE"].str.contains(code)]["TOTAL_TRIPS"].sum(), headers = http_response_headers)
-
-      else:
-        logging.info(df[df["DESTINATION_PT_CODE"].str.contains(code)]["TOTAL_TRIPS"].sum())
-        return func.HttpResponse(df[df["DESTINATION_PT_CODE"].str.contains(code)]["TOTAL_TRIPS"].sum(), headers = http_response_headers)
-
-
     if type is "2":
       df = df[df["DAY_TYPE"] == "WEEKENDS/HOLIDAY"]
     else:
       df = df[df["DAY_TYPE"] == "WEEKDAY"]
     
-    if direction is "1":
-      df = pd.concat([df[df["ORIGIN_PT_CODE"].str.contains(code)]])
-    if direction is "2":
-      df = pd.concat([df[df["DESTINATION_PT_CODE"].str.contains(code)]])
-    else:
-      df = pd.concat([df[df["ORIGIN_PT_CODE"].str.contains(code)], df[df["DESTINATION_PT_CODE"].str.contains(code)]])    
     
-    df = df.drop_duplicates()
+    if direction is "1":
+      df = df.groupby(['ORIGIN_PT_CODE']).sum()
 
-    df = df.sort_values(by='TOTAL_TRIPS', ascending=False)
-      
-    if limit:
-      try:
-        lim = int(limit)
-        df = df.head(lim)
-      except ValueError:
-        pass
-
-    return func.HttpResponse(df.to_json(orient='records'), headers = http_response_headers)
+    else:
+      df = df.groupby(['DESTINATION_PT_CODE']).sum()
+    return func.HttpResponse(df.to_json(orient='columns'), headers = http_response_headers)
