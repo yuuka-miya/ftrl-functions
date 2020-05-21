@@ -4,6 +4,8 @@ import azure.functions as func
 
 import pandas as pd
 
+import urllib, json
+
 #i thought azure would do this for me but no
 http_response_headers = {
 "Access-Control-Allow-Origin": "*"
@@ -42,24 +44,33 @@ interchange_codes = {
     }
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request.')
     
     code = req.params.get('ptcode')
     type = req.params.get('type')
     limit = req.params.get('limit')
     direction = req.params.get('direction')
-    to_sum = req.params.get('sum')
+    
+    period = req.params.get('period')
     logging.info(to_sum)
+    
+    url = "https://yuuka-miya.github.io/ftrl-data/data_list.json"
+
+    with urllib.request.urlopen(url) as f:
+        data = json.loads(f.read())
+
+    interchange_codes = data["interchange_codes"]
+    if period not in data["data_packs"]["train"]:
+        return func.HttpResponse("Period not found!",status_code=400)
     
     if not code:
         return func.HttpResponse("Please pass a ptcode on the query string",status_code=400)
        
     if code in interchange_codes:
         code = interchange_codes[code]
-    
-    df = pd.read_csv("https://github.com/yuuka-miya/ftrl-data/raw/master/processed_data/201903/origin_destination_train_201903_wholemonth_20190423123747.csv")
         
+    url = "https://github.com/yuuka-miya/ftrl-data/raw/master/processed_data/" + period + "/" + data["data_packs"]["train"][period]
     
+    df = pd.read_csv(url)
     df = df[["DAY_TYPE", "ORIGIN_PT_CODE", "DESTINATION_PT_CODE", "TOTAL_TRIPS"]]
     
     df = df[df['TOTAL_TRIPS'] !=0]

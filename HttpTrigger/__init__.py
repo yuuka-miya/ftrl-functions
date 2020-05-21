@@ -2,6 +2,8 @@ import logging
 
 import azure.functions as func
 
+import urllib, json
+
 import pandas as pd
 
 #i thought azure would do this for me but no
@@ -49,16 +51,27 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     limit = req.params.get('limit')
     direction = req.params.get('direction')
     to_sum = req.params.get('sum')
-    logging.info(to_sum)
+    period = req.params.get('period')
+    logging.info(period)
+    
+    url = "https://yuuka-miya.github.io/ftrl-data/data_list.json"
+
+    with urllib.request.urlopen(url) as f:
+        data = json.loads(f.read())
+
+    interchange_codes = data["interchange_codes"]
+    if period not in data["data_packs"]["train"]:
+        return func.HttpResponse("Period not found!",status_code=400)
     
     if not code:
         return func.HttpResponse("Please pass a ptcode on the query string",status_code=400)
        
     if code in interchange_codes:
         code = interchange_codes[code]
-    
-    df = pd.read_csv("https://github.com/yuuka-miya/ftrl-data/raw/master/processed_data/201903/origin_destination_train_201903_wholemonth_20190423123747.csv")
         
+    url = "https://github.com/yuuka-miya/ftrl-data/raw/master/processed_data/" + period + "/" + data["data_packs"]["train"][period]
+    
+    df = pd.read_csv(url)
     
     df = df[["DAY_TYPE", "ORIGIN_PT_CODE", "DESTINATION_PT_CODE", "TOTAL_TRIPS"]]
     
