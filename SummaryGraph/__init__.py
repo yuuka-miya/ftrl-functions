@@ -14,16 +14,8 @@ import base64
 #i thought azure would do this for me but no
 http_response_headers = {
 "Access-Control-Allow-Origin": "*",
-"Content-Type": "text/html"
+"Content-Type": "text/plain"
 }
-
-def plot(self):
-        image = BytesIO()
-        x = numpy.linspace(0, 10)
-        y = numpy.sin(x)
-        pyplot.plot(x, y)
-        pyplot.savefig(image, format='png')
-        return base64.encodestring(image.getvalue())
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
 
@@ -52,7 +44,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         code = interchange_codes[code]
         
     url = "https://github.com/yuuka-miya/ftrl-data/raw/master/processed_data/summary.csv"
-    title = "passengers on "
     
     df_in = pd.read_csv(url, header=[0, 1])
     df_in = df_in.drop([0])
@@ -66,24 +57,15 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     df_in.index.set_names("PT_CODE" , level=1)
     
     if type is "1":
-        df = df_in.loc['WEEKDAY'].loc[code]
-        title = title + "WEEKDAY"
-    if direction is "2":
-        df = df_in.loc['WEEKENDS/HOLIDAY'].loc[code]
-        title = title + "WEEKENDS/HOLIDAY"
-    image = BytesIO()
+        df = df_in.loc['WEEKDAY'].loc[[code]]
+    if type is "2":
+        df = df_in.loc['WEEKENDS/HOLIDAY'].loc[[code]]
     if direction is "1":
-        title = "Entering " + title + " at " + code
-        inplot = df['TOTAL_TAP_IN_VOLUME'].plot(kind="bar", title = title).get_figure()
-    if direction is "2":
-        title = "Exiting " + title + " at " + code
-        inplot = df['TOTAL_TAP_OUT_VOLUME'].plot(kind="bar", title = title).get_figure()
-        
-    inplot.savefig(image, format='png')
-    d = base64.encodestring(image.getvalue())
-    
-    if "raw" in req.params.keys():
-        return func.HttpResponse(d.decode('utf8'), headers = {"Access-Control-Allow-Origin": "*"})
+        df = df[['TOTAL_TAP_IN_VOLUME']]
 
+    if direction is "2":
+        df = df[['TOTAL_TAP_OUT_VOLUME']]
+        
+    df.columns = df.columns.droplevel(0)
     
-    return func.HttpResponse('''<img src="data:image/png;base64,%s"/> ''' %(d.decode('utf8')), headers = http_response_headers)
+    return func.HttpResponse(df.to_json(orient="records"), headers = {"Access-Control-Allow-Origin": "*"})

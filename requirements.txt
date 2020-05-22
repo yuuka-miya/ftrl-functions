@@ -1,3 +1,4 @@
 pandas
 azure-functions
 azure-functions-worker
+matplotlib
